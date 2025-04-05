@@ -50,6 +50,17 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/my-cars/:email', async (req, res) => {
+      try {
+          const email = req.params.email;
+          const query = {userEmail: email };          
+          const result = await carCollection.find(query).toArray();
+          res.status(200).send(result);
+      } catch (error) {
+          res.status(400).send('fetch failed my car');
+      }
+  });
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
