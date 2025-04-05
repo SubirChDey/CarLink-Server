@@ -52,14 +52,31 @@ async function run() {
 
     app.get('/my-cars/:email', async (req, res) => {
       try {
-          const email = req.params.email;
-          const query = {userEmail: email };          
-          const result = await carCollection.find(query).toArray();
-          res.status(200).send(result);
+        const email = req.params.email;
+        const query = { userEmail: email };
+        const result = await carCollection.find(query).toArray();
+        res.status(200).send(result);
       } catch (error) {
-          res.status(400).send('fetch failed my car');
+        res.status(400).send('fetch failed my car');
       }
-  });
+    });
+
+    // Delete route created
+    app.delete('/cars/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await carCollection.deleteOne(query);
+
+        if (result.deletedCount === 0) {
+          return res.status(404).send('Car not found');
+        }
+
+        res.status(200).send(result);
+      } catch (error) {
+        res.status(400).send('Failed to delete car');
+      }
+    });
 
 
     // Send a ping to confirm a successful connection
