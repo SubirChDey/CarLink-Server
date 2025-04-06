@@ -61,6 +61,37 @@ async function run() {
       }
     });
 
+    // My Car Update
+    app.put('/cars/:id', async (req, res) => {
+      const updatedCar = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const car = {
+          $set: {
+              carModel: updatedCar.carModel,
+              dailyRentalPrice: updatedCar.dailyRentalPrice,
+              availability: updatedCar.availability,
+              vehicleRegistrationNumber: updatedCar.vehicleRegistrationNumber,
+              features: updatedCar.features,
+              description: updatedCar.description,
+              bookingCount: updatedCar.bookingCount,
+              carImage: updatedCar.carImage,
+              location: updatedCar.location,
+              bookingStatus: updatedCar.bookingStatus,
+          },
+      };
+      try {
+          const result = await carCollection.updateOne(filter, car);
+          if (result.matchedCount === 0) {
+              return res.status(404).send('Car not found');
+          }
+          res.status(200).send(result);
+      } catch (error) {
+          res.status(400).send('Failed to update car');
+      }
+  });
+
+
     // Delete route created
     app.delete('/cars/:id', async (req, res) => {
       try {
