@@ -40,9 +40,21 @@ async function run() {
 
     // get all car data from db
     app.get('/cars', async (req, res) => {
-      const result = await carCollection.find().toArray()
+      const query = req.query.availability
+      console.log(query);
+      let filter = {}
+      if (query) {
+        filter = { availability: "Available" }
+      }
+      const result = await carCollection.find(filter).toArray()
       res.send(result)
     })
+
+    // app.get('/availableCars', async (req, res) => {
+    //   const query = { availability: "Available"}
+    //   const result = await carCollection.find(query).toArray()    
+    //   res.send(result)
+    // })
 
     app.get('/cars/:id', async (req, res) => {
       const id = req.params.id
@@ -51,9 +63,9 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/my-cars/:email', async (req, res) => {
+    app.get('/my-cars', async (req, res) => {
       try {
-        const email = req.params.email;
+        const email = req.query.email;
         const query = { userEmail: email };
         const result = await carCollection.find(query).toArray();
         res.status(200).send(result);
@@ -138,6 +150,21 @@ async function run() {
           return res.status(404).send('Car not found');
         }
 
+        res.status(200).send(result);
+      } catch (error) {
+        res.status(400).send('Failed to delete car');
+      }
+    });
+
+    // my booking delete
+    app.delete('/carBooking/:id', async (req, res) => {
+      try {
+        const id = req.params.id;        
+        const query = { _id: new ObjectId(id) };        
+        const result = await carBookingCollection.deleteOne(query);
+        if (result.deletedCount === 0) {
+          return res.status(404).send('Car not found');
+        }
         res.status(200).send(result);
       } catch (error) {
         res.status(400).send('Failed to delete car');
