@@ -93,14 +93,42 @@ async function run() {
     });
 
 
-    // Car Booking Created
+    // bookingCount updated
     app.post("/carBooking", async (req, res) => {
       const newCarBooking = req.body;
-      const result = await carBookingCollection.insertOne(newCarBooking);      
-      res.send(result);
+      console.log("New Booking Received:", newCarBooking);
+
+      try {
+        const result = await carBookingCollection.insertOne(newCarBooking);
+
+        const carId = newCarBooking.car_id;
+        console.log("Car ID:", carId);
+
+        const filter = { _id: new ObjectId(carId) };
+        console.log("filter:", filter);
+        const update = {
+          $inc: { bookingCount: 1 },
+        };
+
+        const updateBookingCount = await carCollection.updateOne(filter, update);
+        console.log("Update Result:", updateBookingCount);
+
+        res.send({
+          insertResult: result,
+          updateResult: updateBookingCount,
+        });
+      } catch (error) {
+        console.error("Error in carBooking route:", error);
+        res.status(500).send({ error: "Something went wrong!" });
+      }
     });
 
- 
+    // Get data from carBooking route
+    app.get("/carBooking", async (req, res) => {
+      const cursor = carBookingCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
 
     // Delete route created
