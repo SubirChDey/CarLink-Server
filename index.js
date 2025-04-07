@@ -29,6 +29,7 @@ async function run() {
     await client.connect();
 
     const carCollection = client.db('carsDB').collection('cars')
+    const carBookingCollection = client.db("carsDB").collection("carbooking");
 
     // Save all car data in db
     app.post('/add-cars', async (req, res) => {
@@ -67,29 +68,39 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const car = {
-          $set: {
-              carModel: updatedCar.carModel,
-              dailyRentalPrice: updatedCar.dailyRentalPrice,
-              availability: updatedCar.availability,
-              vehicleRegistrationNumber: updatedCar.vehicleRegistrationNumber,
-              features: updatedCar.features,
-              description: updatedCar.description,
-              bookingCount: updatedCar.bookingCount,
-              carImage: updatedCar.carImage,
-              location: updatedCar.location,
-              bookingStatus: updatedCar.bookingStatus,
-          },
+        $set: {
+          carModel: updatedCar.carModel,
+          dailyRentalPrice: updatedCar.dailyRentalPrice,
+          availability: updatedCar.availability,
+          vehicleRegistrationNumber: updatedCar.vehicleRegistrationNumber,
+          features: updatedCar.features,
+          description: updatedCar.description,
+          bookingCount: updatedCar.bookingCount,
+          carImage: updatedCar.carImage,
+          location: updatedCar.location,
+          bookingStatus: updatedCar.bookingStatus,
+        },
       };
       try {
-          const result = await carCollection.updateOne(filter, car);
-          if (result.matchedCount === 0) {
-              return res.status(404).send('Car not found');
-          }
-          res.status(200).send(result);
+        const result = await carCollection.updateOne(filter, car);
+        if (result.matchedCount === 0) {
+          return res.status(404).send('Car not found');
+        }
+        res.status(200).send(result);
       } catch (error) {
-          res.status(400).send('Failed to update car');
+        res.status(400).send('Failed to update car');
       }
-  });
+    });
+
+
+    // Car Booking Created
+    app.post("/carBooking", async (req, res) => {
+      const newCarBooking = req.body;
+      const result = await carBookingCollection.insertOne(newCarBooking);      
+      res.send(result);
+    });
+
+ 
 
 
     // Delete route created
