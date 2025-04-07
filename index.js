@@ -100,23 +100,19 @@ async function run() {
 
       try {
         const result = await carBookingCollection.insertOne(newCarBooking);
-
         const carId = newCarBooking.car_id;
-        console.log("Car ID:", carId);
-
         const filter = { _id: new ObjectId(carId) };
-        console.log("filter:", filter);
         const update = {
           $inc: { bookingCount: 1 },
         };
 
         const updateBookingCount = await carCollection.updateOne(filter, update);
-        console.log("Update Result:", updateBookingCount);
-
         res.send({
-          insertResult: result,
-          updateResult: updateBookingCount,
+          success: true,
+          message: "Car booking successful",
+          insertedId: result.insertedId,
         });
+
       } catch (error) {
         console.error("Error in carBooking route:", error);
         res.status(500).send({ error: "Something went wrong!" });
