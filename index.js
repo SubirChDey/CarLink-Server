@@ -104,6 +104,29 @@ async function run() {
       }
     });
 
+    // Assuming you’re using Express and MongoDB
+app.put("/carBooking/:id", async (req, res) => {
+  const id = req.params.id;
+  const { startDateTime, endDateTime } = req.body;
+
+  try {
+    const result = await carBookingCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          startDateTime: new Date(startDateTime),
+          endDateTime: new Date(endDateTime),
+        },
+      }
+    );
+    res.send(result);
+  } catch (err) {
+    console.error("Failed to update booking", err);
+    res.status(500).send({ error: "Internal server error" });
+  }
+});
+
+
 
     // bookingCount updated
     app.post("/carBooking", async (req, res) => {
