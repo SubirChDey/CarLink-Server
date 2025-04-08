@@ -55,6 +55,19 @@ async function run() {
     //   const result = await carCollection.find(query).toArray()    
     //   res.send(result)
     // })
+    app.get('/recentListings', async (req, res) => {
+      try {
+        const result = await carCollection
+          .find()
+          .sort({ addedDate: -1 }).limit(6)
+          .toArray();
+    
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching recent listings:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
 
     app.get('/cars/:id', async (req, res) => {
       const id = req.params.id
