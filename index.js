@@ -1,14 +1,23 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 require('dotenv').config()
 const app = express();
 // const router = express.Router();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const cookieParser = require('cookie-parser');
 
+
+const corsOptions = {
+  origin: ['http://localhost:5173'],
+  credentials: true,
+  optionalSuccessStatus: 200,
+}
 // middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser())
 
 
 
@@ -22,6 +31,37 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+// verify token
+// const verifyToken = (req, res, next) => {
+//   const token = req.cookies?.token
+//   console.log(token);
+//   if (!token) return res.status(401).send({ message: 'unauthorized access' })
+//   jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+//     if (err) {
+//       return res.status(401).send({ message: 'unauthorized access' })
+//     }
+//     else {
+//       req.user = decoded
+//     }
+//   })
+//   next()
+// }
+
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) return res.status(401).send({ message: 'unauthorized access' });
+
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: 'unauthorized access' });
+    }
+    req.user = decoded;
+    next();
+  });
+}
+
+
+
 
 async function run() {
   try {
@@ -30,6 +70,27 @@ async function run() {
 
     const carCollection = client.db('carsDB').collection('cars')
     const carBookingCollection = client.db("carsDB").collection("carbooking");
+
+    // Generate JWT
+    app.post('/jwt', async (req, res) => {
+      const email = req.body
+      const token = jwt.sign(email, process.env.SECRET_KEY, { expiresIn: '2m', })
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      }).send({ success: true })
+    })
+
+    // logout, clear cookie from browser
+    app.get('/logout', async (req, res) => {
+      res.clearCookie('token', {
+        maxAge: 0,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      })
+        .send({ success: true })
+    })
 
     // Save all car data in db
     app.post('/add-cars', async (req, res) => {
@@ -55,13 +116,14 @@ async function run() {
     //   const result = await carCollection.find(query).toArray()    
     //   res.send(result)
     // })
+
     app.get('/recentListings', async (req, res) => {
       try {
         const result = await carCollection
           .find()
           .sort({ addedDate: -1 }).limit(6)
           .toArray();
-    
+
         res.send(result);
       } catch (error) {
         console.error("Error fetching recent listings:", error);
@@ -76,12 +138,20 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/my-cars', async (req, res) => {
+    app.get('/my-cars', verifyToken, async (req, res) => {
       try {
-        const email = req.query.email;
-        const query = { userEmail: email };
+        const decodedEmail = req.user?.email
+        const queryEmail = req.query.email;
+        // const email = req.query.email;
+        console.log(queryEmail, decodedEmail);
+
+        if (decodedEmail !== queryEmail) {
+          return res.status(403).send({ message: 'forbidden access' });
+        }
+        const query = { userEmail: queryEmail };
         const result = await carCollection.find(query).toArray();
         res.status(200).send(result);
+
       } catch (error) {
         res.status(400).send('fetch failed my car');
       }
@@ -118,26 +188,26 @@ async function run() {
     });
 
     // Assuming you’re using Express and MongoDB
-app.put("/carBooking/:id", async (req, res) => {
-  const id = req.params.id;
-  const { startDateTime, endDateTime } = req.body;
+    app.put("/carBooking/:id", async (req, res) => {
+      const id = req.params.id;
+      const { startDateTime, endDateTime } = req.body;
 
-  try {
-    const result = await carBookingCollection.updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          startDateTime: new Date(startDateTime),
-          endDateTime: new Date(endDateTime),
-        },
+      try {
+        const result = await carBookingCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              startDateTime: new Date(startDateTime),
+              endDateTime: new Date(endDateTime),
+            },
+          }
+        );
+        res.send(result);
+      } catch (err) {
+        console.error("Failed to update booking", err);
+        res.status(500).send({ error: "Internal server error" });
       }
-    );
-    res.send(result);
-  } catch (err) {
-    console.error("Failed to update booking", err);
-    res.status(500).send({ error: "Internal server error" });
-  }
-});
+    });
 
 
 
@@ -168,8 +238,14 @@ app.put("/carBooking/:id", async (req, res) => {
     });
 
     // Get data from carBooking route
-    app.get("/carBooking", async (req, res) => {
-      const cursor = carBookingCollection.find();
+    app.get("/carBooking", verifyToken, async (req, res) => {
+      const decodedEmail = req.user?.email;
+      const email = req.query.email;
+      if (decodedEmail !== email) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+      const query = { bookedBy: email };          
+      const cursor = carBookingCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -195,8 +271,8 @@ app.put("/carBooking/:id", async (req, res) => {
     // my booking delete
     app.delete('/carBooking/:id', async (req, res) => {
       try {
-        const id = req.params.id;        
-        const query = { _id: new ObjectId(id) };        
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
         const result = await carBookingCollection.deleteOne(query);
         if (result.deletedCount === 0) {
           return res.status(404).send('Car not found');
