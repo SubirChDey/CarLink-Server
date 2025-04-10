@@ -10,7 +10,7 @@ const cookieParser = require('cookie-parser');
 
 
 const corsOptions = {
-  origin: ['http://localhost:5173'],
+  origin: ['http://localhost:5173', 'https://carlink-sbr.netlify.app'],
   credentials: true,
   optionalSuccessStatus: 200,
 }
@@ -60,13 +60,10 @@ const verifyToken = (req, res, next) => {
   });
 }
 
-
-
-
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const carCollection = client.db('carsDB').collection('cars')
     const carBookingCollection = client.db("carsDB").collection("carbooking");
@@ -74,7 +71,7 @@ async function run() {
     // Generate JWT
     app.post('/jwt', async (req, res) => {
       const email = req.body
-      const token = jwt.sign(email, process.env.SECRET_KEY, { expiresIn: '2m', })
+      const token = jwt.sign(email, process.env.SECRET_KEY, { expiresIn: '24h', })
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -100,22 +97,22 @@ async function run() {
     })
 
     // get all car data from db
-    app.get('/cars', async (req, res) => {
-      const query = req.query.availability
-      console.log(query);
-      let filter = {}
-      if (query) {
-        filter = { availability: "Available" }
-      }
-      const result = await carCollection.find(filter).toArray()
-      res.send(result)
-    })
-
-    // app.get('/availableCars', async (req, res) => {
-    //   const query = { availability: "Available"}
-    //   const result = await carCollection.find(query).toArray()    
+    // app.get('/cars', async (req, res) => {
+    //   const query = req.query.availability
+    //   console.log(query);
+    //   let filter = {}
+    //   if (query) {
+    //     filter = { availability: "Available" }
+    //   }
+    //   const result = await carCollection.find(filter).toArray()
     //   res.send(result)
     // })
+
+    app.get('/availableCars', async (req, res) => {
+      const query = { availability: "Available"}
+      const result = await carCollection.find(query).toArray()    
+      res.send(result)
+    })
 
     app.get('/recentListings', async (req, res) => {
       try {
@@ -143,7 +140,7 @@ async function run() {
         const decodedEmail = req.user?.email
         const queryEmail = req.query.email;
         // const email = req.query.email;
-        console.log(queryEmail, decodedEmail);
+        // console.log(queryEmail, decodedEmail);
 
         if (decodedEmail !== queryEmail) {
           return res.status(403).send({ message: 'forbidden access' });
@@ -214,7 +211,7 @@ async function run() {
     // bookingCount updated
     app.post("/carBooking", async (req, res) => {
       const newCarBooking = req.body;
-      console.log("New Booking Received:", newCarBooking);
+      // console.log("New Booking Received:", newCarBooking);
 
       try {
         const result = await carBookingCollection.insertOne(newCarBooking);
@@ -285,7 +282,7 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
